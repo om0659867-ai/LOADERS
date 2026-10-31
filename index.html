@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loadstring Maker</title>
+<style>
+:root{--bg:#0b0d12;--panel:#12151c;--panel2:#181c25;--border:#252a36;--text:#e6e9ef;--muted:#8b93a7;--accent:#7c5cff;--accent2:#5b8cff;--ok:#34d399;--warn:#fbbf24;--bad:#f87171}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+h2,h3{margin:0}
+a{color:var(--accent2)}
+.muted{color:var(--muted)}.small{font-size:12px}
+.wrap{max-width:1050px;margin:0 auto;padding:20px 16px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px}
+.logo{font-weight:700;font-size:20px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;text-decoration:none}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);flex:1;min-width:140px}
+input,select,textarea{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 10px;font:inherit;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:220px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+button{background:var(--panel2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit}
+button:hover{border-color:var(--accent)}
+button.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));border:0;font-weight:600;padding:10px 18px}
+button.danger{color:var(--bad)}button.danger:hover{border-color:var(--bad)}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.inline{display:flex;gap:6px}
+.modes{display:flex;gap:10px;margin-bottom:12px}
+.mode{flex:1;border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;background:var(--panel2)}
+.mode.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.mode b{display:block}
+.badge{font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px;border:1px solid var(--border)}
+.badge.keyed{color:var(--accent);border-color:var(--accent)}
+.badge.nonkeyed{color:var(--ok);border-color:var(--ok)}
+.st-active{color:var(--ok)}.st-used{color:var(--warn)}.st-expired{color:var(--bad)}
+.shead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.btns{display:flex;gap:6px;flex-wrap:wrap}
+.tablewrap{overflow-x:auto;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:12px}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;word-break:break-all}
+.out{position:relative;margin-top:10px}
+.out pre{margin:0;background:#0a0c10;border:1px solid var(--border);border-radius:8px;padding:12px 70px 12px 12px;overflow-x:auto;font-size:12.5px;white-space:pre-wrap;word-break:break-all}
+.out button{position:absolute;top:8px;right:8px;padding:4px 10px;font-size:12px}
+.notice{border:1px solid var(--warn);border-radius:10px;padding:10px 12px;margin-top:16px;background:rgba(251,191,36,.07)}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:20px;width:min(640px,94vw)}
+dialog::backdrop{background:rgba(0,0,0,.65)}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--border);padding:9px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+#toast.show{opacity:1}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="logo" href="#/">Loadstring Maker</a>
+    <a href="#/" class="small">New script</a>
+  </header>
+
+  <!-- HOME -->
+  <div id="home">
+    <div class="card">
+      <div class="row"><label>Script name<input id="cName" maxlength="100" placeholder="My script"></label></div>
+      <label style="margin-bottom:12px">Lua script
+        <textarea id="cCode" spellcheck="false" placeholder="print('Hello world')"></textarea>
+      </label>
+      <div class="modes" id="modes">
+        <div class="mode sel" data-mode="nonkeyed"><b>Non-keyed</b><span class="muted small">Anyone with the loadstring can run it.</span></div>
+        <div class="mode" data-mode="keyed"><b>Keyed</b><span class="muted small">Key locks to the first device (HWID) that runs it.</span></div>
+      </div>
+      <div id="cKeyOpts" hidden></div>
+      <button class="primary" id="cGo">Generate loadstring</button>
+      <div id="cResult"></div>
+    </div>
+    <div class="card" id="mineCard" hidden>
+      <h3 style="margin-bottom:8px">Your scripts <span class="muted small">(saved in this browser)</span></h3>
+      <div id="mine"></div>
+    </div>
+  </div>
+
+  <!-- MANAGE -->
+  <div id="manage" hidden></div>
+</div>
+
+<dialog id="dlgKey">
+  <h3 id="dkTitle">New key</h3>
+  <div id="dkOpts" style="margin:12px 0"></div>
+  <div class="btns"><button class="primary" id="dkGo">Create</button><button id="dkClose">Close</button></div>
+  <div id="dkResult"></div>
+</dialog>
+
+<dialog id="dlgEdit">
+  <h3>Edit script</h3>
+  <div style="margin-top:12px">
+    <div class="row">
+      <label>Name<input id="eName" maxlength="100"></label>
+      <label>Mode<select id="eMode"><option value="nonkeyed">Non-keyed</option><option value="keyed">Keyed</option></select></label>
+    </div>
+    <label style="margin-bottom:12px">Lua script<textarea id="eCode" spellcheck="false"></textarea></label>
+  </div>
+  <div class="btns"><button class="primary" id="eSave">Save</button><button id="eClose">Cancel</button></div>
+</dialog>
+
+<div id="toast"></div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtDate = (t) => (t ? new Date(t).toLocaleString() : '—');
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2200);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy'); ta.remove();
+  }
+  toast('Copied');
+}
+const guard = (fn) => async (...a) => { try { await fn(...a); } catch (e) { toast(e.message); } };
+
+/* ---------- local storage of owner tokens ---------- */
+const store = {
+  all() { try { return JSON.parse(localStorage.getItem('ls_scripts') || '{}'); } catch { return {}; } },
+  save(o) { try { localStorage.setItem('ls_scripts', JSON.stringify(o)); } catch {} },
+  put(slug, patch) { const o = this.all(); o[slug] = { ...(o[slug] || {}), ...patch }; this.save(o); },
+  del(slug) { const o = this.all(); delete o[slug]; this.save(o); },
+};
+const manageLink = (slug, token) => location.origin + '/#/m/' + slug + '.' + token;
+
+/* ---------- api ---------- */
+async function request(url, method, body, token) {
+  const headers = {};
+  if (body) headers['Content-Type'] = 'application/json';
+  if (token) headers['X-Owner-Token'] = token;
+  const r = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  let data = null; try { data = await r.json(); } catch {}
+  if (!r.ok) throw new Error((data && data.error) || 'Error ' + r.status);
+  return data;
+}
+function api(slug, path, method = 'GET', body) {
+  const tok = (store.all()[slug] || {}).token || '';
+  return request('/api/s/' + encodeURIComponent(slug) + path, method, body, tok);
+}
+
+/* ---------- loadstring helpers ---------- */
+function loadstringFor(slug, mode, key) {
+  const base = 'loadstring(game:HttpGet("' + location.origin + '/raw/' + slug + '"))()';
+  return mode === 'keyed' ? 'script_key="' + key + '";\n' + base : base;
+}
+function outBlock(text) {
+  return '<div class="out"><pre>' + esc(text) + '</pre><button data-act="copy-pre">Copy</button></div>';
+}
+function fmtDur(s) {
+  if (!s) return 'Lifetime';
+  if (s % 86400 === 0) return s / 86400 + ' day' + (s / 86400 > 1 ? 's' : '');
+  if (s % 3600 === 0) return s / 3600 + ' hour' + (s / 3600 > 1 ? 's' : '');
+  return Math.round(s / 60) + ' min';
+}
+
+/* ---------- key options widget ---------- */
+function keyOptsHtml() {
+  return `<div class="keyopts"><div class="row">
+    <label>Duration (starts at first use)
+      <select data-k="dur">
+        <option value="86400">1 day</option><option value="604800">7 days</option>
+        <option value="2592000" selected>30 days</option><option value="lifetime">Lifetime</option>
+        <option value="custom">Custom…</option>
+      </select></label>
+    <label class="cust" hidden>Custom
+      <span class="inline"><input data-k="cval" type="number" min="1" value="3">
+      <select data-k="cunit"><option value="3600">hours</option><option value="86400" selected>days</option></select></span></label>
+  </div><div class="row">
+    <label>Devices allowed (HWIDs)<input data-k="max" type="number" min="1" max="100" value="1"></label>
+    <label>Number of keys<input data-k="count" type="number" min="1" max="100" value="1"></label>
+    <label>Note (optional)<input data-k="note" maxlength="100"></label>
+  </div></div>`;
+}
+function readKeyOpts(root) {
+  const g = (k) => $('[data-k="' + k + '"]', root);
+  let duration = g('dur').value;
+  if (duration === 'custom') duration = Number(g('cval').value) * Number(g('cunit').value);
+  else if (duration !== 'lifetime') duration = Number(duration);
+  return { duration, maxHwids: Number(g('max').value), count: Number(g('count').value), note: g('note').value };
+}
+document.addEventListener('change', (e) => {
+  if (e.target.dataset && e.target.dataset.k === 'dur') {
+    $('.cust', e.target.closest('.keyopts')).hidden = e.target.value !== 'custom';
+  }
+});
+
+/* ---------- routing ---------- */
+function route() {
+  const h = location.hash;
+  let m = h.match(/^#\/m\/([\w-]+)\.([\w-]+)$/);
+  if (m) { store.put(m[1], { token: m[2] }); location.hash = '#/s/' + m[1]; return; }
+  m = h.match(/^#\/s\/([\w-]+)$/);
+  if (m) return showManage(m[1]);
+  showHome();
+}
+window.addEventListener('hashchange', route);
+
+/* ---------- home ---------- */
+let createMode = 'nonkeyed';
+$('#cKeyOpts').innerHTML = keyOptsHtml();
+$$('#modes .mode').forEach((m) => (m.onclick = () => {
+  createMode = m.dataset.mode;
+  $$('#modes .mode').forEach((x) => x.classList.toggle('sel', x === m));
+  $('#cKeyOpts').hidden = createMode !== 'keyed';
+}));
+
+function showHome() {
+  $('#manage').hidden = true; $('#home').hidden = false;
+  const o = store.all(); const slugs = Object.keys(o);
+  $('#mineCard').hidden = !slugs.length;
+  $('#mine').innerHTML = slugs.map((s) => `<div class="shead" style="padding:6px 0;border-bottom:1px solid var(--border)">
+    <div><a href="#/s/${esc(s)}">${esc(o[s].name || s)}</a>${o[s].mode ? `<span class="badge ${esc(o[s].mode)}">${o[s].mode === 'keyed' ? 'Keyed' : 'Non-keyed'}</span>` : ''}</div>
+    <button class="small" data-act="forget" data-slug="${esc(s)}">Forget</button></div>`).join('');
+}
+
+$('#cGo').onclick = guard(async () => {
+  const body = { name: $('#cName').value, code: $('#cCode').value, mode: createMode };
+  if (createMode === 'keyed') body.key = readKeyOpts($('#cKeyOpts'));
+  const r = await request('/api/scripts', 'POST', body);
+  store.put(r.script.slug, { token: r.token, name: r.script.name, mode: r.script.mode });
+  renderResults($('#cResult'), r);
+  $('#cResult').insertAdjacentHTML('beforeend', `<div class="notice"><b>Save your manage link.</b>
+    <div class="muted small">It's the only way to create keys, reset HWIDs or delete this script. It can't be recovered, and it's also saved in this browser.</div>
+    ${outBlock(manageLink(r.script.slug, r.token))}
+    <p style="margin:10px 0 0"><a href="#/s/${esc(r.script.slug)}">Open manage page →</a></p></div>`);
+  toast('Created');
+  showHomeList();
+});
+function showHomeList() { const keep = $('#cResult').innerHTML; showHome(); $('#cResult').innerHTML = keep; }
+
+function renderResults(box, r) {
+  const { script, keys } = r;
+  if (script.mode === 'nonkeyed') {
+    box.innerHTML = '<p class="muted small" style="margin-top:14px">Your loadstring:</p>' + outBlock(loadstringFor(script.slug, 'nonkeyed'));
+    return;
+  }
+  box.innerHTML = '<p class="muted small" style="margin-top:14px">' + keys.length + ' keyed loadstring' + (keys.length > 1 ? 's' : '') + ' (each key locks to the first device that runs it):</p>' +
+    keys.map((k) => outBlock(loadstringFor(script.slug, 'keyed', k.key))).join('');
+}
+
+/* ---------- manage ---------- */
+let cur = null;
+async function showManage(slug) {
+  cur = slug;
+  $('#home').hidden = true; const box = $('#manage'); box.hidden = false;
+  box.innerHTML = '<p class="muted">Loading…</p>';
+  try {
+    const s = await api(slug, '');
+    const keys = s.mode === 'keyed' ? await api(slug, '/keys') : [];
+    const logs = await api(slug, '/logs?limit=100');
+    store.put(slug, { name: s.name, mode: s.mode });
+    box.innerHTML = renderManage(s, keys, logs);
+  } catch (e) {
+    box.innerHTML = `<div class="card"><p>${esc(e.message)}</p><p class="muted small">Open the full manage link you saved when you created the script.</p><a href="#/">← Back</a></div>`;
+  }
+}
+function renderManage(s, keys, logs) {
+  const keyed = s.mode === 'keyed';
+  let h = `<div class="card"><div class="shead">
+    <div><b>${esc(s.name)}</b><span class="badge ${s.mode}">${keyed ? 'Keyed' : 'Non-keyed'}</span>
+      <div class="muted small">${esc(fmtDate(s.created_at))} · ${s.uses} execution${s.uses === 1 ? '' : 's'}</div></div>
+    <div class="btns">
+      ${keyed ? '<button data-act="add-key">+ New key</button>' : '<button data-act="copy-ls">Copy loadstring</button>'}
+      <button data-act="copy-manage">Copy manage link</button>
+      <button data-act="edit">Edit</button><button class="danger" data-act="del-script">Delete</button>
+    </div></div></div>`;
+  if (keyed) {
+    h += '<div class="card"><h3>Keys</h3>';
+    h += keys.length ? `<div class="tablewrap"><table><thead><tr><th>Key</th><th>Status</th><th>Duration</th><th>Expires</th><th>HWID / last used</th><th>Uses</th><th></th></tr></thead><tbody>` +
+      keys.map((k) => `<tr data-kid="${k.id}" data-key="${esc(k.key)}">
+        <td><code>${esc(k.key)}</code>${k.note ? `<div class="muted small">${esc(k.note)}</div>` : ''}</td>
+        <td class="st-${k.status}">${k.status}</td>
+        <td>${esc(fmtDur(k.duration))}</td>
+        <td>${k.activated_at ? (k.expires_at ? esc(fmtDate(k.expires_at)) : 'Never') : '<span class="muted">On first use</span>'}</td>
+        <td>${k.hwids.length ? k.hwids.map((x) => `<div><code>${esc(x.hwid)}</code><div class="muted small">${esc(fmtDate(x.last_used))} · ${esc(x.ip || '')}</div></div>`).join('') : '<span class="muted">—</span>'}
+          <div class="muted small">${k.hwids.length}/${k.max_hwids} device${k.max_hwids > 1 ? 's' : ''}</div></td>
+        <td>${k.uses}</td>
+        <td><div class="btns"><button data-act="copy-key-ls">Copy</button><button data-act="reset-hwid">Reset HWID</button><button data-act="regen">Regenerate</button><button class="danger" data-act="del-key">Delete</button></div></td>
+      </tr>`).join('') + '</tbody></table></div>' : '<p class="muted">No keys yet.</p>';
+    h += '</div>';
+  }
+  h += `<div class="card"><div class="shead"><h3>Activity</h3><button data-act="refresh">Refresh</button></div>
+    <div class="tablewrap"><table><thead><tr><th>Time</th><th>Key</th><th>HWID</th><th>IP</th><th>Result</th></tr></thead><tbody>` +
+    (logs.length ? logs.map((l) => `<tr><td>${esc(fmtDate(l.ts))}</td><td><code>${esc(l.key || '—')}</code></td><td><code>${esc(l.hwid || '—')}</code></td><td>${esc(l.ip || '')}</td>
+      <td class="${l.result === 'ok' ? 'st-active' : 'st-expired'}">${esc(l.result)}</td></tr>`).join('')
+      : '<tr><td colspan="5" class="muted">Nothing yet.</td></tr>') + '</tbody></table></div></div>';
+  return h;
+}
+
+/* ---------- dialogs ---------- */
+$('#dkClose').onclick = () => $('#dlgKey').close();
+$('#dkGo').onclick = guard(async () => {
+  const r = await api(cur, '/keys', 'POST', readKeyOpts($('#dkOpts')));
+  renderResults($('#dkResult'), r);
+  showManage(cur);
+});
+$('#eClose').onclick = () => $('#dlgEdit').close();
+$('#eSave').onclick = guard(async () => {
+  await api(cur, '', 'PUT', { name: $('#eName').value, code: $('#eCode').value, mode: $('#eMode').value });
+  $('#dlgEdit').close(); toast('Saved'); showManage(cur);
+});
+
+/* ---------- click delegation ---------- */
+document.addEventListener('click', guard(async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const act = btn.dataset.act;
+  if (act === 'copy-pre') return copyText($('pre', btn.parentElement).textContent);
+  if (act === 'forget') {
+    if (!confirm('Remove this script from this browser? You will need your manage link to open it again.')) return;
+    store.del(btn.dataset.slug); return showHome();
+  }
+  const row = btn.closest('tr[data-kid]');
+  const rec = store.all()[cur] || {};
+
+  if (act === 'refresh') return showManage(cur);
+  if (act === 'copy-ls') return copyText(loadstringFor(cur, 'nonkeyed'));
+  if (act === 'copy-manage') return copyText(manageLink(cur, rec.token));
+  if (act === 'add-key') {
+    $('#dkTitle').textContent = 'New key for ' + (rec.name || 'script');
+    $('#dkOpts').innerHTML = keyOptsHtml(); $('#dkResult').innerHTML = '';
+    return $('#dlgKey').showModal();
+  }
+  if (act === 'edit') {
+    const s = await api(cur, '');
+    $('#eName').value = s.name; $('#eMode').value = s.mode; $('#eCode').value = s.code;
+    return $('#dlgEdit').showModal();
+  }
+  if (act === 'del-script') {
+    if (!confirm('Delete this script and all its keys? Existing loadstrings will stop working.')) return;
+    await api(cur, '', 'DELETE'); store.del(cur); toast('Deleted'); location.hash = '#/'; return;
+  }
+  if (act === 'copy-key-ls') return copyText(loadstringFor(cur, 'keyed', row.dataset.key));
+  if (act === 'reset-hwid') {
+    if (!confirm('Clear the HWID(s) bound to this key so it can be used on a new device?')) return;
+    await api(cur, `/keys/${row.dataset.kid}/reset-hwid`, 'POST', {});
+    toast('HWID reset'); return showManage(cur);
+  }
+  if (act === 'regen') {
+    if (!confirm('Replace this key with a new one? The old key stops working and the HWID/expiry are reset.')) return;
+    const r = await api(cur, `/keys/${row.dataset.kid}/regenerate`, 'POST', {});
+    await copyText(loadstringFor(cur, 'keyed', r.key)); return showManage(cur);
+  }
+  if (act === 'del-key') {
+    if (!confirm('Delete this key?')) return;
+    await api(cur, '/keys/' + row.dataset.kid, 'DELETE');
+    toast('Key deleted'); return showManage(cur);
+  }
+}));
+
+route();
+</script>
+</body>
+</html>
